@@ -1,0 +1,16 @@
+# Token i sekrety
+.env
+
+# Wrażliwa konfiguracja bota (ID kanałów, ról itd.) — zostaje tylko pusty katalog
+data/*
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Docker
+*.log

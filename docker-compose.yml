@@ -1,0 +1,12 @@
+services:
+  discord-cleaner-bot:
+    build: .
+    container_name: discord-cleaner-bot
+    restart: unless-stopped
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      CONFIG_PATH: /data/config.json
+      CHECK_INTERVAL_SECONDS: "20"
+      WARNING_COOLDOWN_SECONDS: "600"
+    volumes:
+      - ./data:/data
