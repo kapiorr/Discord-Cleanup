@@ -63,7 +63,7 @@ TRANSLATIONS = {
         "viplist_title": "**Roles/users whose messages are never deleted by cleanup:**",
         "lang_admin_only": "Only a server Administrator can change the bot's language.",
         "lang_invalid": "Invalid language. Use `EN` or `PL`.",
-        "lang_set": "Bot language for this server set to **{lang}**.",
+        "lang_set": "Bot language for this server set to **{lang_name}**.",
         "lang_name_en": "English",
         "lang_name_pl": "Polish",
         "help_title": "**Bot commands for cleaning channels:**",
@@ -137,7 +137,7 @@ TRANSLATIONS = {
         "viplist_title": "**Role/userzy, których wiadomości nigdy nie są usuwane przy czyszczeniu:**",
         "lang_admin_only": "Tylko Administrator serwera może zmienić język bota.",
         "lang_invalid": "Zły język. Użyj `EN` lub `PL`.",
-        "lang_set": "Język bota na tym serwerze ustawiono na **{lang}**.",
+        "lang_set": "Język bota na tym serwerze ustawiono na **{lang_name}**.",
         "lang_name_en": "angielski",
         "lang_name_pl": "polski",
         "help_title": "**Komendy bota do czyszczenia kanałów:**",
@@ -475,7 +475,7 @@ async def set_lang(ctx: commands.Context, lang_code: str):
     config_store.set_guild_lang(ctx.guild.id, lang_input)
     await config_store.save()
     lang_name = t(lang_input, "lang_name_en" if lang_input == "en" else "lang_name_pl")
-    await ctx.reply(t(lang_input, "lang_set", lang=lang_name), mention_author=False)
+    await ctx.reply(t(lang_input, "lang_set", lang_name=lang_name), mention_author=False)
 
 
 @bot.command(name="unset")
