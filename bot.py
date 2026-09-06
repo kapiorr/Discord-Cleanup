@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 from discord.ext import commands, tasks
+import aiohttp
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("cleaner-bot")
@@ -19,6 +20,26 @@ WARNING_COOLDOWN_SECONDS = int(os.environ.get("WARNING_COOLDOWN_SECONDS", "600")
 
 DURATION_RE = re.compile(r"^(\d+)([smh])$", re.IGNORECASE)
 UNIT_SECONDS = {"s": 1, "m": 60, "h": 3600}
+
+# --- śledzenie stanu połączenia sieciowego (żeby nie zaśmiecać logów pełnym tracebackiem
+#     przy każdej chwilowej utracie internetu/DNS) ---
+
+_network_down = False
+
+
+def _mark_network_down(exc: Exception):
+    global _network_down
+    if not _network_down:
+        log.warning("Brak połączenia z Discord API (problem sieciowy/DNS): %s — ponawiam próby "
+                    "co %ss.", exc, CHECK_INTERVAL)
+        _network_down = True
+
+
+def _mark_network_up():
+    global _network_down
+    if _network_down:
+        log.info("Połączenie z Discord API zostało przywrócone.")
+        _network_down = False
 
 DEFAULT_LANG = "en"
 
@@ -784,20 +805,28 @@ async def cleanup_loop():
             if now < activate_at:
                 continue  # jeszcze trwa 10-minutowy cooldown ostrzeżenia — nic nie ruszamy
 
-        # Cooldown minął (albo go nie było, stara konfiguracja) — kasujemy wiadomość
-        # ostrzegawczą (spełniła swoją rolę) i czyścimy kanał.
-        warning_message_id = cfg.get("warning_message_id")
-        if warning_message_id:
-            await _delete_message_if_exists(channel, warning_message_id)
-            config_store.clear_warning(int(channel_id))
-            await config_store.save()
+        try:
+            # Cooldown minął (albo go nie było, stara konfiguracja) — kasujemy wiadomość
+            # ostrzegawczą (spełniła swoją rolę) i czyścimy kanał.
+            warning_message_id = cfg.get("warning_message_id")
+            if warning_message_id:
+                await _delete_message_if_exists(channel, warning_message_id)
+                config_store.clear_warning(int(channel_id))
+                await config_store.save()
 
-        only_new_after_raw = cfg.get("only_new_after")
-        only_new_after = datetime.fromisoformat(only_new_after_raw) if only_new_after_raw else None
+            only_new_after_raw = cfg.get("only_new_after")
+            only_new_after = datetime.fromisoformat(only_new_after_raw) if only_new_after_raw else None
 
-        # Wiadomość z regułą (pinned_message_id) zostaje chroniona na stałe.
-        await _cleanup_channel(channel, cfg["seconds"], cfg["count"], only_new_after,
-                                cfg.get("pinned_message_id"))
+            # Wiadomość z regułą (pinned_message_id) zostaje chroniona na stałe.
+            await _cleanup_channel(channel, cfg["seconds"], cfg["count"], only_new_after,
+                                    cfg.get("pinned_message_id"))
+        except (OSError, aiohttp.ClientError) as exc:
+            # Chwilowy brak internetu/DNS — nie logujemy pełnego tracebacku, tylko krótkie
+            # ostrzeżenie (raz), i próbujemy ponownie przy kolejnym przebiegu pętli.
+            _mark_network_down(exc)
+            continue
+        else:
+            _mark_network_up()
 
 
 @cleanup_loop.before_loop
