@@ -837,4 +837,4 @@ async def before_cleanup_loop():
 if __name__ == "__main__":
     if not TOKEN:
         raise SystemExit("Brak zmiennej środowiskowej DISCORD_TOKEN")
-    bot.run(TOKEN)
+    bot.run(TOKEN, log_handler=None)
