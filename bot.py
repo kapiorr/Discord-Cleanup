@@ -41,6 +41,44 @@ def _mark_network_up():
         log.info("Połączenie z Discord API zostało przywrócone.")
         _network_down = False
 
+
+_NETWORK_ERRORS = (OSError, aiohttp.ClientError, asyncio.TimeoutError)
+
+
+def _find_network_error(exc: typing.Optional[BaseException]) -> typing.Optional[BaseException]:
+    """Szuka błędu sieciowego w łańcuchu przyczyn wyjątku."""
+    seen = set()
+    while exc is not None and id(exc) not in seen:
+        if isinstance(exc, _NETWORK_ERRORS):
+            return exc
+        seen.add(id(exc))
+        exc = exc.__cause__ or exc.__context__
+    return None
+
+
+class _ReconnectLogFilter(logging.Filter):
+    """discord.py loguje każdą nieudaną próbę połączenia jako ERROR z pełnym tracebackiem.
+    Przy chwilowej awarii sieci/DNS zamieniamy to na jednolinijkowe ostrzeżenie;
+    prawdziwe, nieoczekiwane błędy zostają bez zmian."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.exc_info and record.exc_info[1] is not None:
+            net_exc = _find_network_error(record.exc_info[1])
+            if net_exc is not None:
+                global _network_down
+                _network_down = True
+                record.levelno = logging.WARNING
+                record.levelname = "WARNING"
+                original = record.getMessage()
+                record.msg = "%s (%s: %s)"
+                record.args = (original, type(net_exc).__name__, net_exc)
+                record.exc_info = None
+                record.exc_text = None
+        return True
+
+
+logging.getLogger("discord.client").addFilter(_ReconnectLogFilter())
+
 DEFAULT_LANG = "en"
 
 # --- Tłumaczenia / Translations ---
@@ -366,7 +404,13 @@ bot = commands.Bot(command_prefix=commands.when_mentioned, intents=intents, help
 
 
 @bot.event
+async def on_resumed():
+    _mark_network_up()
+
+
+@bot.event
 async def on_ready():
+    _mark_network_up()
     log.info("Zalogowano jako %s (ID: %s)", bot.user, bot.user.id)
     if not cleanup_loop.is_running():
         cleanup_loop.start()
