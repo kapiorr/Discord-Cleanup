@@ -18,8 +18,10 @@ CONFIG_PATH = os.environ.get("CONFIG_PATH", "/data/config.json")
 CHECK_INTERVAL = int(os.environ.get("CHECK_INTERVAL_SECONDS", "20"))
 WARNING_COOLDOWN_SECONDS = int(os.environ.get("WARNING_COOLDOWN_SECONDS", "600"))  # 10 minut
 
-DURATION_RE = re.compile(r"^(\d+)([smh])$", re.IGNORECASE)
-UNIT_SECONDS = {"s": 1, "m": 60, "h": 3600}
+DURATION_RE = re.compile(r"^(\d+)(mo|[smhdw])$", re.IGNORECASE)
+# "m" = minuty, "mo" = miesiące (przyjmujemy 30 dni).
+UNIT_SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 7 * 86400, "mo": 30 * 86400}
+MAX_DURATION_SECONDS = 3650 * 86400  # ~10 lat; chroni przed przepełnieniem dat przy absurdalnych wartościach
 
 # --- śledzenie stanu połączenia sieciowego (żeby nie zaśmiecać logów pełnym tracebackiem
 #     przy każdej chwilowej utracie internetu/DNS) ---
@@ -85,7 +87,8 @@ DEFAULT_LANG = "en"
 
 TRANSLATIONS = {
     "en": {
-        "bad_duration": "Invalid time format. Use e.g. 30s, 5m, 1h.",
+        "bad_duration": "Invalid time format. Use e.g. 30s, 5m, 1h, 7d, 2w, 1mo.",
+        "duration_too_long": "That time is too long. The maximum is about 10 years.",
         "bad_count_format": "Message count must be a whole number.",
         "bad_count": "Message count must be 0 or greater.",
         "confirm_time_only": "Messages in this channel will be deleted after {duration}.",
@@ -129,8 +132,8 @@ TRANSLATIONS = {
         "help_set": "`{mention} set <time> <count>` — sets up cleanup for this channel.",
         "help_set_example": "  e.g. `{mention} set 5m 10` — deletes messages older than 5 minutes, "
                              "and once there are more than 10, deletes starting from the oldest.",
-        "help_set_units": "  allowed time units: `s` (seconds), `m` (minutes), `h` (hours), "
-                           "e.g. `30s`, `1m`, `1h`.",
+        "help_set_units": "  allowed time units: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), "
+                           "`w` (weeks), `mo` (months, 30 days), e.g. `30s`, `1m`, `1h`, `7d`, `1mo`.",
         "help_set_zero": "  use `0` for either value to ignore that rule (e.g. `{mention} set 0 10` "
                           "only limits by count); `{mention} set 0 0` disables cleanup, same as `{mention} unset`.",
         "help_set_new": "  add `new` at the end (e.g. `{mention} set 24h 0 new`) to only apply cleanup "
@@ -160,7 +163,8 @@ TRANSLATIONS = {
         "help_help": "`{mention} help` — shows this message.",
     },
     "pl": {
-        "bad_duration": "Zły format czasu. Użyj np. 30s, 5m, 1h.",
+        "bad_duration": "Zły format czasu. Użyj np. 30s, 5m, 1h, 7d, 2w, 1mo.",
+        "duration_too_long": "Ten czas jest zbyt długi. Maksimum to około 10 lat.",
         "bad_count_format": "Liczba wiadomości musi być liczbą całkowitą.",
         "bad_count": "Liczba wiadomości musi być większa lub równa 0.",
         "confirm_time_only": "Wiadomości na tym kanale będą usuwane po {duration}.",
@@ -203,8 +207,8 @@ TRANSLATIONS = {
         "help_set": "`{mention} set <czas> <liczba>` — ustawia czyszczenie kanału.",
         "help_set_example": "  np. `{mention} set 5m 10` — usuwa wiadomości starsze niż 5 minut, "
                              "a gdy jest ich więcej niż 10, kasuje od najstarszej.",
-        "help_set_units": "  dozwolone jednostki czasu: `s` (sekundy), `m` (minuty), `h` (godziny), "
-                           "np. `30s`, `1m`, `1h`.",
+        "help_set_units": "  dozwolone jednostki czasu: `s` (sekundy), `m` (minuty), `h` (godziny), `d` (dni), "
+                           "`w` (tygodnie), `mo` (miesiące, 30 dni), np. `30s`, `1m`, `1h`, `7d`, `1mo`.",
         "help_set_zero": "  wpisz `0` w dowolnej wartości, żeby pominąć to kryterium (np. `{mention} set 0 10` "
                           "limituje tylko liczbą); `{mention} set 0 0` wyłącza czyszczenie, tak jak `{mention} unset`.",
         "help_set_new": "  dopisz `new` na końcu (np. `{mention} set 24h 0 new`), żeby czyszczenie dotyczyło "
@@ -248,12 +252,18 @@ def parse_duration(value: str, lang: str = DEFAULT_LANG) -> int:
     if not match:
         raise ValueError(t(lang, "bad_duration"))
     amount, unit = match.groups()
-    return int(amount) * UNIT_SECONDS[unit.lower()]
+    seconds = int(amount) * UNIT_SECONDS[unit.lower()]
+    if seconds > MAX_DURATION_SECONDS:
+        raise ValueError(t(lang, "duration_too_long"))
+    return seconds
 
 
 def format_duration(seconds: int) -> str:
-    hours, remainder = divmod(seconds, 3600)
+    days, remainder = divmod(seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
     minutes, secs = divmod(remainder, 60)
+    if days:
+        return f"{days}d{hours}h{minutes}m{secs}s"
     return f"{hours}h{minutes}m{secs}s"
 
 

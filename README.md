@@ -98,7 +98,7 @@ All commands are invoked by mentioning the bot in a channel, e.g. `@Cleaner Bot 
 
 | Command | Access | Description |
 |---|---|---|
-| `@bot set <duration> <count> [new]` | Manage Messages / Administrator / `admin` list | Sets up cleanup for the channel. Duration format: `30s`, `5m`, `1h`. `0` on either value skips that rule, `0 0` disables (same as `unset`). Add `new` at the end to only affect messages sent after this command. Example: `@bot set 5m 10` |
+| `@bot set <duration> <count> [new]` | Manage Messages / Administrator / `admin` list | Sets up cleanup for the channel. Duration format: `30s`, `5m`, `1h`, `7d`, `2w`, `1mo` (`m` = minutes, `mo` = months, counted as 30 days). `0` on either value skips that rule, `0 0` disables (same as `unset`). Add `new` at the end to only affect messages sent after this command. Example: `@bot set 5m 10` |
 | `@bot unset` | Manage Messages / Administrator / `admin` list | Disables cleanup for the channel |
 | `@bot status` | anyone | Shows the channel's current configuration |
 | `@bot admin @Role` / `@User` | Server Administrator only | Grants access to `set`/`unset`/`help` |
@@ -235,7 +235,7 @@ Wszystkie komendy wywołuje się przez wspomnienie (mention) bota na kanale, np.
 
 | Komenda | Dostęp | Opis |
 |---|---|---|
-| `@bot set <czas> <liczba> [new]` | Manage Messages / Administrator / lista `admin` | Ustawia czyszczenie kanału. Format czasu: `30s`, `5m`, `1h`. `0` w dowolnej wartości pomija to kryterium, `0 0` wyłącza (jak `unset`). Dopisz `new` na końcu, żeby dotyczyło tylko wiadomości wysłanych po tej komendzie. Przykład: `@bot set 5m 10` |
+| `@bot set <czas> <liczba> [new]` | Manage Messages / Administrator / lista `admin` | Ustawia czyszczenie kanału. Format czasu: `30s`, `5m`, `1h`, `7d`, `2w`, `1mo` (`m` = minuty, `mo` = miesiące, liczone jako 30 dni). `0` w dowolnej wartości pomija to kryterium, `0 0` wyłącza (jak `unset`). Dopisz `new` na końcu, żeby dotyczyło tylko wiadomości wysłanych po tej komendzie. Przykład: `@bot set 5m 10` |
 | `@bot unset` | Manage Messages / Administrator / lista `admin` | Wyłącza czyszczenie na tym kanale |
 | `@bot status` | każdy | Pokazuje aktualną konfigurację kanału |
 | `@bot admin @Rola` / `@Uzytkownik` | tylko Administrator serwera | Nadaje dostęp do komend `set`/`unset`/`help` |
